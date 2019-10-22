@@ -22,13 +22,18 @@ username = local_env.get('username')
 password = local_env.get('password')
 path = local_env.get('path', '')
 
-if username and password:
-    login = Login(username, password)
+if not (username and password):
+    print('未设置用户名密码')
+    exit('0')
+username = username.split(',')
+password = password.split(',')
+
+for u, p in zip(username, password):
+    login = Login(u, p)
     res, _ = login.try_login()
     if res:
         sess = login.sess
         api = get_course_api(sess)
-        print(api)
         generate_class_schedule(api, username, path)
     else:
-        print("Error")
+        print(f"{u} 生成日历出错！")
