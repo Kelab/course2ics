@@ -36,25 +36,17 @@ def get_course_api(sess: request.Session):
         'zzz': '16'
     }]
     """
-    err_msg = ''
 
     res = sess.get(API.jwc_course_table, verify=False)
     course_table = _parse_course_table(res.text)
     exp_course_table = _parse_exp_course_table(sess)
-    if exp_course_table:
-        course_table.extend(exp_course_table)
-    else:
-        err_msg = "实验课更新失败"
-    json = {
-        "body": {
-            "result": course_table,
-            "week": get_week(),
-            "updateTime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            "errMsg": err_msg
-        }
+
+    course_table.extend(exp_course_table)
+
+    body = {
+        "result": course_table,
     }
-    # IS_LOGGER.info("json is {}".format(json))
-    return json
+    return body
 
 
 def _parse_course_table(html):
@@ -155,18 +147,6 @@ def _parse_exp_course_table(sess: request.Session):
         'currTeachCourseCode': '%',
         'page': 1
     }
-
-    # 获取访问链接进行身份验证
-
-    verify = sess.get(API.syk_verify_url, allow_redirects=True, verify=False)
-
-    try:
-        verify_raw = BeautifulSoup(verify.text, "lxml").script.string.strip()
-    except Exception:
-        return {}
-    flag = verify_raw.find("'")
-    verify_href = verify_raw[flag + 1:-2]
-    sess.get(API.syk_base_url + verify_href)
 
     # 解析实验课有关信息
     res = sess.get(API.syk_course_table)

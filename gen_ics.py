@@ -77,7 +77,7 @@ def generate_class_schedule(api: dict, username, path):
     semester_name = INFO.semester_name
     print('semester_name： ', semester_name)
     ics = Calendar(semester_name, username)
-    course_lists = api['body']['result']
+    course_lists = api['result']
     for course in course_lists:
         class_name = course['class_name']  # 课程名称
         class_time = course['class_time']  # 上课时间 type: list
