@@ -34,6 +34,6 @@ for u, p in zip(username, password):
     if res:
         sess = login.sess
         api = get_course_api(sess)
-        generate_class_schedule(api, username, path)
+        generate_class_schedule(api, u, path)
     else:
         print(f"{u} 生成日历出错！")
