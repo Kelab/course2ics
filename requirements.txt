@@ -1,3 +1,4 @@
 beautifulsoup4
 requests
 auth-swust
+python-dotenv
