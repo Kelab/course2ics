@@ -13,7 +13,7 @@ from constants import API, INFO
 from exceptions import WeekNotFoundError, DateNotFoundError, TimeNotFoundError
 
 
-def get_course_api(sess: request.Session):
+def get_course_api(sess: request.Session) -> list:
     """
     传入 requests 的 session
     返回一个list类型的API：
@@ -28,11 +28,11 @@ def get_course_api(sess: request.Session):
     """
 
     course_schedule = _parse_course_schedule(sess)
-    exp_course_schedule = _parse_exp_course_schedule(sess)
-    course_schedule.extend(exp_course_schedule)
+    if INFO.load_exp:
+        exp_course_schedule = _parse_exp_course_schedule(sess)
+        course_schedule.extend(exp_course_schedule)
 
-    body = {"course_schedule": course_schedule}
-    return body
+    return course_schedule
 
 
 def _parse_exam_schedule(sess: request.Session):

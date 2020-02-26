@@ -5,6 +5,7 @@ class INFO:
     # 校历 http://www.dean.swust.edu.cn/type/2c9fd0b8655589e50165558a19a9000e/page/2c9fd0b8655589e50165558a19a9000f
     semester_name = _("c2i_semester_name")
     semester_start_day = _("c2i_semester_start_day")
+    load_exp = False if _("c2i_load_exp", "").upper() == "FALSE" else True
     if not semester_name or not semester_start_day:
         raise ValueError("请配置环境变量：c2i_semester_name 和 c2i_semester_start_day")
 

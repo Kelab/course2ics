@@ -31,7 +31,10 @@ c2i_password=xxxxxx
 c2i_semester_name=2019-2020-2
 c2i_semester_start_day=2020-02-17
 c2i_path=../
-CAPTCHA_BACKEND=pytorch # 该选项请参考 auth-swust 包的使用
+# 加载实验 True or False, 默认 True
+c2i_load_exp=False
+# 该选项请参考 auth-swust 包的使用
+CAPTCHA_BACKEND=pytorch
 ```
 
 要同时生成多个日历，可以使用`,`将不同用户名密码分隔开，用户名密码一一对应：

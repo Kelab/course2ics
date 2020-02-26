@@ -65,12 +65,11 @@ def process_class_time(class_time, first_week):
     return weekday_dict[weekday], sk_time, xk_time
 
 
-def generate_class_schedule(api: dict, username, path):
+def generate_class_schedule(course_lists: list, username, path):
     # 本学期的名称
     semester_name = INFO.semester_name
     print("semester_name： ", semester_name)
     ics = Calendar(semester_name, username)
-    course_lists = api["course_schedule"]
     for course in course_lists:
         class_name = course["class_name"]  # 课程名称
         class_time = course["class_time"]  # 上课时间 type: list
