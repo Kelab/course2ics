@@ -47,15 +47,16 @@ class Calendar:
         print('Done')
 
 
-class Event:
+class ClassEvent:
     def __str__(self):
         return self.event
 
-    def __init__(self, dt: dict, location: str, summary: str,
+    def __init__(self, start_time: str, end_time: str, location: str, summary: str,
                  rrule: dict = {}):
         """
         参数：
-            dt 字典类型 有两个值， dt['sk']是上课时间 dt['xk']是下课时间
+            start_time 上课时间 形如 '20181018T080000Z' 的表示时间的字符串
+            end_time 下课时间 形如 '20181018T080000Z' 的表示时间的字符串
             location 上课地点
             summary 课程名 + 老师名 ： 离散数学 - 巫玲
             rrule 可选字典类型 如果指定的话说明课是需要重复的
@@ -79,7 +80,7 @@ class Event:
         """
 
         uid = str(uuid.uuid3(uuid.NAMESPACE_URL, location + summary +
-                             dt['sk'])).replace('-', '') + '@SWUST'
+                             start_time + end_time)).replace('-', '') + '@SWUST'
         self.event = ("BEGIN:VEVENT\n"
                       f"DTSTAMP:{get_now_time()}\n"
                       f"UID:{uid}\n"
@@ -88,7 +89,7 @@ class Event:
                       "SEQUENCE:0\n"
                       "STATUS:CONFIRMED\n"
                       "TRANSP:OPAQUE\n")
-        self.add_info(dt, location, summary)
+        self.add_info( start_time, end_time, location, summary)
         self.add_rrule(rrule)
         self.add_alarm()
         self.event += "END:VEVENT\n"
@@ -99,9 +100,9 @@ class Event:
                            f"COUNT={rrule['COUNT']};"
                            f"BYDAY={rrule['BYDAY']}\n")
 
-    def add_info(self, dt: dict, location, summary):
-        self.event += (f"DTSTART;TZID=Asia/Shanghai:{dt['sk']}\n"
-                       f"DTEND;TZID=Asia/Shanghai:{dt['xk']}\n"
+    def add_info(self,  start_time: str, end_time: str, location, summary):
+        self.event += (f"DTSTART;TZID=Asia/Shanghai:{start_time}\n"
+                       f"DTEND;TZID=Asia/Shanghai:{end_time}\n"
                        f"LOCATION:{location}\n"
                        f"SUMMARY:{summary}\n"
                        f"DESCRIPTION:{summary}\n")

@@ -1,6 +1,6 @@
 import time
 from constants import INFO
-from ical import Calendar, Event
+from ical import Calendar, ClassEvent
 
 
 def get_one_date(aweek, aday, atime):
@@ -67,9 +67,9 @@ def process_class_time(class_time, first_week):
     spend_time = spend_time * class_period_count + big_break_time
     complete_class_time = start_class_time + spend_time
 
-    dt['sk'] = get_one_date(first_week, weekday, start_class_time)
-    dt['xk'] = get_one_date(first_week, weekday, complete_class_time)
-    return weekday_dict[weekday], dt
+    sk_time = get_one_date(first_week, weekday, start_class_time)
+    xk_time = get_one_date(first_week, weekday, complete_class_time)
+    return weekday_dict[weekday], sk_time, xk_time
 
 
 def generate_class_schedule(api: dict, username, path):
@@ -77,7 +77,7 @@ def generate_class_schedule(api: dict, username, path):
     semester_name = INFO.semester_name
     print('semester_name： ', semester_name)
     ics = Calendar(semester_name, username)
-    course_lists = api['result']
+    course_lists = api['course_schedule']
     for course in course_lists:
         class_name = course['class_name']  # 课程名称
         class_time = course['class_time']  # 上课时间 type: list
@@ -89,14 +89,14 @@ def generate_class_schedule(api: dict, username, path):
             startWeek = int(course['qsz'])  # 该门课起始周
             endWeek = int(course['zzz'])  # 该门课结束周
             weeks_count = endWeek - startWeek + 1  # 该门课共上多少周
-            weekday, dt = process_class_time(_time,
+            weekday, sk_time, xk_time = process_class_time(_time,
                                              startWeek)  # 获取上课的 年月日时分 周几
-            print(weekday, dt)
+            print(weekday, sk_time, xk_time)
             summary = class_name + f'({teacher_name})'  # 日历中的标题
             rrule = {
                 'BYDAY': weekday,
                 'COUNT': weeks_count,
             }
 
-            ics.events.append(Event(dt, _location, summary, rrule))
+            ics.events.append(ClassEvent(sk_time, xk_time, _location, summary, rrule))
     ics.write(path)

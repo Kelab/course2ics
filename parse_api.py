@@ -3,24 +3,14 @@
 """
 import math
 import re
-import time
+from typing import Dict
 
 from auth_swust import request
 from bs4 import BeautifulSoup
 
+from utils import parse_table_data
 from constants import API, INFO
-
-
-def get_week():
-    """
-    :return: 返回当前周数
-    """
-    # 将格式字符串转换为时间戳
-    start_time = int(
-        time.mktime(time.strptime(INFO.semester_start_day, "%Y-%m-%d")))
-    now_time = int(time.time())
-    used_time = (now_time - start_time + 1) / (24 * 60 * 60 * 7)
-    return math.ceil(used_time)
+from exceptions import WeekNotFoundError, DateNotFoundError, TimeNotFoundError
 
 
 def get_course_api(sess: request.Session):
@@ -37,22 +27,30 @@ def get_course_api(sess: request.Session):
     }]
     """
 
-    res = sess.get(API.jwc_course_table, verify=False)
-    course_table = _parse_course_table(res.text)
-    exp_course_table = _parse_exp_course_table(sess)
+    course_schedule = _parse_course_schedule(sess)
+    exp_course_schedule = _parse_exp_course_schedule(sess)
+    course_schedule.extend(exp_course_schedule)
 
-    course_table.extend(exp_course_table)
-
-    body = {
-        "result": course_table,
-    }
+    body = {"course_schedule": course_schedule}
     return body
 
 
-def _parse_course_table(html):
-    result_dict = {}
-    location_dict = {}
-    class_time_dict = {}
+def _parse_exam_schedule(sess: request.Session):
+    resp = sess.get(API.jwc_exam_schedule, verify=False)
+    soup = BeautifulSoup(resp.text, "lxml")
+    final_exam_table = soup.select_one("#finalExamTable")
+    mid_exam_table = soup.select_one("#MidExam")
+    resit_exam_table = soup.select_one("#ResitExam")
+    print(parse_table_data(final_exam_table))
+    print(parse_table_data(mid_exam_table))
+    print(parse_table_data(resit_exam_table))
+
+
+def _parse_course_schedule(sess: request.Session):
+    resp = sess.get(API.jwc_course_schedule, verify=False)
+    result_dict: Dict[str, dict] = {}
+    location_dict: Dict[str, list] = {}
+    class_time_dict: Dict[str, list] = {}
     """
     返回一个list：
     [{
@@ -67,13 +65,13 @@ def _parse_course_table(html):
     :return: list
     """
     # 使用 requests 访问 教务处的课表
-    course_table_soup = BeautifulSoup(html, "lxml")
+    course_schedule_soup = BeautifulSoup(resp.text, "lxml")
 
     # 使用 bs 解析 课表所在的div
-    course_table_div = course_table_soup.select_one("div#choosenCourseTable")
+    course_schedule_div = course_schedule_soup.select_one("div#choosenCourseTable")
 
     # 循环遍历每个 tr 简单来说就是遍历每一讲
-    for item in course_table_div.select("table.UICourseTable > tbody > tr"):
+    for item in course_schedule_div.select("table.UICourseTable > tbody > tr"):
         # 这里用来判断哪一个 td 是星期一
         thres = 999
         # 周几
@@ -93,10 +91,6 @@ def _parse_course_table(html):
             if i < thres:
                 continue
 
-            # 判断课程是否冲突
-            # if c["class"][1] == "attention":
-            # is_conflict = True
-
             # 这里的 for 只是为了获取 星期i第j讲的课 因为可能课程冲突这个时间段有两节课
             for l in c.select("div.lecture"):
                 # 课程名称
@@ -106,8 +100,9 @@ def _parse_course_table(html):
 
                 # 上课周数
                 week_str = str(l.find("span", class_="week").text)
-                match_obj = re.match(r'(\d{2})-(\d{2}).*', week_str)
-
+                match_obj = re.match(r"(\d{2})-(\d{2}).*", week_str)
+                if not match_obj:
+                    raise WeekNotFoundError("无法匹配到周数")
                 # 上课地点
                 class_place = l.find("span", class_="place").text
 
@@ -118,8 +113,7 @@ def _parse_course_table(html):
                     location_dict[class_name].append(class_place)
 
                 # 拼装时间 形如3@2-2
-                class_time = "{0}@{1}-{2}".format(day_of_the_week,
-                                                  lecture_count, 2)
+                class_time = "{0}@{1}-{2}".format(day_of_the_week, lecture_count, 2)
                 # 把上课时间存起来
                 if not class_time_dict.get(class_name):
                     class_time_dict[class_name] = [class_time]
@@ -140,23 +134,25 @@ def _parse_course_table(html):
     return list(result_dict.values())
 
 
-def _parse_exp_course_table(sess: request.Session):
+def _parse_exp_course_schedule(sess: request.Session):
     courses = []
     post_data = {
-        'currYearterm': INFO.semester_name,
-        'currTeachCourseCode': '%',
-        'page': 1
+        "currYearterm": INFO.semester_name,
+        "currTeachCourseCode": "%",
+        "page": 1,
     }
 
     # 解析实验课有关信息
-    res = sess.get(API.syk_course_table)
+    res = sess.get(API.syk_course_schedule)
     syk_info_soup = BeautifulSoup(res.text, "lxml")
     pagination = next(
-        syk_info_soup.select('#content > div > script')[0].stripped_strings)
+        syk_info_soup.select("#content > div > script")[0].stripped_strings
+    )
     # 获取总条数 每页条数   当前页数
     # 5         10        1
-    all_course, page_size, _ = pagination[pagination.find('(') +
-                                          1:pagination.find(')')].split(',')
+    all_course, page_size, _ = pagination[
+        pagination.find("(") + 1 : pagination.find(")")
+    ].split(",")
 
     # 获取总页数
     all_page_num = math.ceil(int(all_course) / int(page_size))
@@ -174,19 +170,17 @@ def _parse_exp_course_table(sess: request.Session):
     # 每一页进行解析
     # 从第二页开始请求
     for page in range(2, all_page_num + 1):
-        post_data['page'] = page
+        post_data["page"] = page
         res = sess.post(
-            "http://202.115.175.177/StuExpbook/book/bookResult.jsp",
-            data=post_data)
+            "http://202.115.175.177/StuExpbook/book/bookResult.jsp", data=post_data
+        )
         # 提取出这个tbody
         soup = BeautifulSoup(res.text, "lxml")
         tbody = soup.select("#content > table > tbody")[0]
 
         for tr in tbody:
             if tr.name == "tr":
-                course_info_lists = [
-                    content for content in tr.stripped_strings
-                ]
+                course_info_lists = [content for content in tr.stripped_strings]
                 if course_info_lists[0] != "课程名称":
                     # 包含所有课程的list
                     courses.append(_exp_list_to_dict(course_info_lists))
@@ -195,27 +189,26 @@ def _parse_exp_course_table(sess: request.Session):
 
 
 def _exp_list_to_dict(x: list):
-    week, day_of_week, class_time = re.match(r'(\d.*)周星期(.)(.*)节',
-                                             x[2]).groups()
-    start_class, end_class = re.match(r'(\d{1,2})-(\d{1,2})',
-                                      class_time).groups()
+    date_info = re.match(r"(\d.*)周星期(.)(.*)节", x[2])
+    if not date_info:
+        raise DateNotFoundError("无法匹配到周数")
+    week, day_of_week, class_time = date_info.groups()
+    time_info = re.match(r"(\d{1,2})-(\d{1,2})", class_time)
+    if not time_info:
+        raise TimeNotFoundError("无法匹配到时间")
+    start_class, end_class = time_info.groups()
     class_duration = int(end_class) - int(start_class) + 1
     lecture_count = math.ceil(int(start_class) / 2)
 
     table = {
-        'class_name':
-        x[1],
-        'location': [x[3]],
-        'class_time': [
-            "{0}@{1}-{2}".format(l_dict[day_of_week], lecture_count,
-                                 class_duration)
+        "class_name": x[1],
+        "location": [x[3]],
+        "class_time": [
+            "{0}@{1}-{2}".format(l_dict[day_of_week], lecture_count, class_duration)
         ],
-        'teacher_name':
-        x[4],
-        'qsz':
-        week,
-        'zzz':
-        week
+        "teacher_name": x[4],
+        "qsz": week,
+        "zzz": week,
     }
     return table
 
