@@ -8,8 +8,8 @@ environ["no_proxy"] = "*"
 from auth_swust import Login
 from loguru import logger
 
-from gen_ics import generate_class_schedule
-from parse_api import get_course_api
+from src.gen_ics import generate_class_schedule
+from src.parse_api import get_course_api
 
 
 # 登录部分
@@ -18,7 +18,6 @@ password = _("c2i_password")
 path = _("c2i_path", "./")
 
 if not username or not password:
-    logger.error("未设置用户名密码")
     raise ValueError("未设置用户名密码")
 
 username_li = username.split(",")

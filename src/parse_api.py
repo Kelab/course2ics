@@ -1,6 +1,3 @@
-"""
-手动解析 教务处课表
-"""
 import math
 import re
 from typing import Dict
@@ -8,9 +5,9 @@ from typing import Dict
 from auth_swust import request
 from bs4 import BeautifulSoup
 
-from utils import parse_table_data
-from constants import API, INFO
-from exceptions import WeekNotFoundError, DateNotFoundError, TimeNotFoundError
+from .utils import parse_table_data
+from .constants import API, INFO
+from .exceptions import WeekNotFoundError, DateNotFoundError, TimeNotFoundError
 
 
 def get_course_api(sess: request.Session) -> list:
@@ -46,7 +43,7 @@ def _parse_exam_schedule(sess: request.Session):
     print(parse_table_data(resit_exam_table))
 
 
-def _parse_course_schedule(sess: request.Session):
+def _parse_course_schedule(sess: request.Session) -> list:
     resp = sess.get(API.jwc_course_schedule, verify=False)
     result_dict: Dict[str, dict] = {}
     location_dict: Dict[str, list] = {}
@@ -75,7 +72,7 @@ def _parse_course_schedule(sess: request.Session):
         # 这里用来判断哪一个 td 是星期一
         thres = 999
         # 周几
-        day_of_the_week = 1
+        weekday = 1
         # 第几讲
         lecture_count = 0
 
@@ -103,22 +100,19 @@ def _parse_course_schedule(sess: request.Session):
                 match_obj = re.match(r"(\d{2})-(\d{2}).*", week_str)
                 if not match_obj:
                     raise WeekNotFoundError("无法匹配到周数")
+
                 # 上课地点
                 class_place = l.find("span", class_="place").text
 
                 # 把上课地点存起来 存成列表
-                if not location_dict.get(class_name):
-                    location_dict[class_name] = [class_place]
-                else:
-                    location_dict[class_name].append(class_place)
+                location_dict.setdefault(class_name, [])
+                location_dict[class_name].append(class_place)
 
                 # 拼装时间 形如3@2-2
-                class_time = "{0}@{1}-{2}".format(day_of_the_week, lecture_count, 2)
+                class_time = "{0}@{1}-{2}".format(weekday, lecture_count, 2)
                 # 把上课时间存起来
-                if not class_time_dict.get(class_name):
-                    class_time_dict[class_name] = [class_time]
-                else:
-                    class_time_dict[class_name].append(class_time)
+                class_time_dict.setdefault(class_name, [])
+                class_time_dict[class_name].append(class_time)
 
                 # 结果
                 result_dict[class_name] = {
@@ -130,11 +124,11 @@ def _parse_course_schedule(sess: request.Session):
                     "zzz": match_obj.group(2),
                 }
 
-            day_of_the_week = day_of_the_week + 1
+            weekday = weekday + 1
     return list(result_dict.values())
 
 
-def _parse_exp_course_schedule(sess: request.Session):
+def _parse_exp_course_schedule(sess: request.Session) -> list:
     courses = []
     post_data = {
         "currYearterm": INFO.semester_name,
@@ -192,7 +186,7 @@ def _exp_list_to_dict(x: list):
     date_info = re.match(r"(\d.*)周星期(.)(.*)节", x[2])
     if not date_info:
         raise DateNotFoundError("无法匹配到周数")
-    week, day_of_week, class_time = date_info.groups()
+    week, weekday, class_time = date_info.groups()
     time_info = re.match(r"(\d{1,2})-(\d{1,2})", class_time)
     if not time_info:
         raise TimeNotFoundError("无法匹配到时间")
@@ -204,7 +198,7 @@ def _exp_list_to_dict(x: list):
         "class_name": x[1],
         "location": [x[3]],
         "class_time": [
-            "{0}@{1}-{2}".format(l_dict[day_of_week], lecture_count, class_duration)
+            "{0}@{1}-{2}".format(l_dict[weekday], lecture_count, class_duration)
         ],
         "teacher_name": x[4],
         "qsz": week,

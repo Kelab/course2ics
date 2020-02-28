@@ -1,6 +1,7 @@
 import time
-from constants import INFO
-from ical import Calendar, ClassEvent
+
+from .constants import INFO
+from .ical import Calendar, ClassEvent
 
 
 def get_one_date(aweek, aday, atime):
@@ -17,7 +18,6 @@ def get_one_date(aweek, aday, atime):
     startDate = (
         int(time.mktime(time.strptime(INFO.semester_start_day, "%Y-%m-%d"))) * 1000
     )
-
     target_day = (
         startDate + 86400 * (aweek - 1) * 7 * 1000 + 86400 * (aday - 1) * 1000 + atime
     )
@@ -69,6 +69,7 @@ def generate_class_schedule(course_lists: list, username, path):
     # 本学期的名称
     semester_name = INFO.semester_name
     print("semester_name： ", semester_name)
+    print("semester_start_day: ", INFO.semester_start_day)
     ics = Calendar(semester_name, username)
     for course in course_lists:
         class_name = course["class_name"]  # 课程名称
