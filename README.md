@@ -4,11 +4,11 @@
 
 ## 依赖项
 
-依赖 `auth_swust >= 1.2.7`，该包的使用请见： <https://github.com/BuddingLab/auth_swust>
-主要是需要**手动安装** `keras, tensorflow` 或 `pytorch`。
+依赖 `auth_swust >= 1.2.7`，该包的使用请见： <https://github.com/BudyLab/auth_swust>
+主要是需要**手动安装** `tensorflow` 或 `pytorch`。
 
 ```bash
-pip install auth-swust
+pip install auth-swust[tensorflow]
 ```
 
 ## 如何启动
